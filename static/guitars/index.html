@@ -1,1 +1,160 @@
-guitars
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Guitar classifier</title>
+        <style>
+            .row {
+                display: flex;
+                flex-direction: row;
+            }
+
+            .col {
+                display: flex;
+                flex-direction: column;
+            }
+
+            #preview {
+                width: 300px;
+                height: auto;
+            }
+
+            #predict {
+                width: 300px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="col">
+            <div>
+                <input type="text" id="url-input" placeholder="Image URL" />
+                <button id="url-button">Get</button>
+            </div>
+            <input type="file" id="upload-input" accept="image/*" />
+            <img id="preview" />
+            <button id="predict">Predict</button>
+            <div id="output"></div>
+        </div>
+
+        <script>
+            (function() {
+                // refs to DOM elements
+                var urlButton = document.getElementById('url-button');
+                var urlInput = document.getElementById('url-input');
+                var uploadInput = document.getElementById('upload-input');
+                var preview = document.getElementById('preview');
+                var predict = document.getElementById('predict');
+                var output = document.getElementById('output');
+
+                // track last loaded image
+                var type;
+                var payload;
+
+                function showOutput(result) {
+                    console.log(result);
+                    while (output.firstChild) {
+                        output.removeChild(output.firstChild);
+                    }
+                    for (var key in result) {
+                        var container = document.createElement('div');
+                        output.appendChild(container);
+
+                        var label = document.createElement('div');
+                        label.textContent = key;
+                        container.appendChild(label);
+
+                        var value = document.createElement('div');
+                        value.textContent = result[key].toFixed(10);
+                        container.appendChild(value);
+                    }
+                }
+
+                urlButton.addEventListener(
+                    'click',
+                    function() {
+                        type = 'url';
+                        payload = urlInput.value;
+                        preview.src = payload;
+                    },
+                    false
+                );
+
+                uploadInput.addEventListener(
+                    'change',
+                    function(e) {
+                        var reader = new FileReader();
+                        reader.addEventListener(
+                            'load',
+                            function() {
+                                type = 'upload';
+                                payload = e.target.files[0];
+                                preview.src = reader.result;
+                            },
+                            false
+                        );
+
+                        var file = e.target.files[0];
+                        if (file) {
+                            reader.readAsDataURL(file);
+                        }
+                    },
+                    false
+                );
+
+                // to trigger change event with same image
+                uploadInput.addEventListener(
+                    'click',
+                    function(e) {
+                        e.target.value = null;
+                    },
+                    false
+                );
+
+                predict.addEventListener(
+                    'click',
+                    function() {
+                        switch (type) {
+                            case 'url': {
+                                fetch('/api/guitars/url', {
+                                    method: 'POST',
+                                    body: JSON.stringify({
+                                        url: payload
+                                    })
+                                })
+                                    .then(function(response) {
+                                        return response.json();
+                                    })
+                                    .then(function(data) {
+                                        showOutput(data);
+                                    });
+                                break;
+                            }
+
+                            case 'upload': {
+                                var formData = new FormData();
+                                formData.append('file', payload);
+                                fetch('/api/guitars/upload', {
+                                    method: 'POST',
+                                    body: formData
+                                })
+                                    .then(function(response) {
+                                        return response.json();
+                                    })
+                                    .then(function(data) {
+                                        showOutput(data);
+                                    });
+                                break;
+                            }
+
+                            default: {
+                                break;
+                            }
+                        }
+                    },
+                    false
+                );
+            })();
+        </script>
+    </body>
+</html>
