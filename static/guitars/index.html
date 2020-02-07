@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Guitar classifier</title>
+        <title>Guitars: acoustic or electric?</title>
         <style>
             .row {
                 display: flex;
@@ -15,26 +15,50 @@
                 flex-direction: column;
             }
 
-            #preview {
-                width: 300px;
-                height: auto;
+            #title {
+                font-size: 1.6em;
             }
 
-            #predict {
+            #container {
                 width: 300px;
+                padding: 4px;
+            }
+
+            #container > * {
+                margin: 4px 0;
+            }
+
+            #url-input {
+                width: 100%;
+            }
+
+            #preview {
+                width: 100%;
+                height: auto;
+                min-height: 50px;
+            }
+
+            #output > div {
+                display: flex;
+                justify-content: space-between;
+            }
+
+            #output > div.max {
+                font-weight: bold;
             }
         </style>
     </head>
     <body>
-        <div class="col">
-            <div>
+        <div id="container" class="col">
+            <div id="title">🎸🎸🎸</div>
+            <div class="row">
                 <input type="text" id="url-input" placeholder="Image URL" />
                 <button id="url-button">Get</button>
             </div>
             <input type="file" id="upload-input" accept="image/*" />
             <img id="preview" />
             <button id="predict">Predict</button>
-            <div id="output"></div>
+            <div id="output" class="col"></div>
         </div>
 
         <script>
@@ -51,22 +75,53 @@
                 var type;
                 var payload;
 
-                function showOutput(result) {
-                    console.log(result);
+                function clearOutput() {
                     while (output.firstChild) {
                         output.removeChild(output.firstChild);
                     }
+                }
+
+                function showLoading() {
+                    clearOutput();
+                    output.textContent = 'Guessing... 🤔';
+                    predict.disabled = true;
+                }
+
+                function showError() {
+                    clearOutput();
+                    output.textContent = 'Something went wrong 😥';
+                    predict.disabled = false;
+                }
+
+                function showOutput(result) {
+                    console.log(result);
+                    clearOutput();
+                    predict.disabled = false;
+
+                    var maxKey = '';
+                    var maxValue = -1;
                     for (var key in result) {
-                        var container = document.createElement('div');
-                        output.appendChild(container);
+                        if (result[key] > maxValue) {
+                            maxKey = key;
+                            maxValue = result[key];
+                        }
+                    }
+
+                    for (var key in result) {
+                        var entry = document.createElement('div');
+                        output.appendChild(entry);
 
                         var label = document.createElement('div');
                         label.textContent = key;
-                        container.appendChild(label);
+                        entry.appendChild(label);
 
                         var value = document.createElement('div');
                         value.textContent = result[key].toFixed(10);
-                        container.appendChild(value);
+                        entry.appendChild(value);
+
+                        if (key === maxKey) {
+                            entry.classList.add('max');
+                        }
                     }
                 }
 
@@ -114,6 +169,7 @@
                 predict.addEventListener(
                     'click',
                     function() {
+                        showLoading();
                         switch (type) {
                             case 'url': {
                                 fetch('/api/guitars/url', {
@@ -127,6 +183,9 @@
                                     })
                                     .then(function(data) {
                                         showOutput(data);
+                                    })
+                                    .catch(function() {
+                                        showError();
                                     });
                                 break;
                             }
@@ -143,6 +202,9 @@
                                     })
                                     .then(function(data) {
                                         showOutput(data);
+                                    })
+                                    .catch(function() {
+                                        showError();
                                     });
                                 break;
                             }
